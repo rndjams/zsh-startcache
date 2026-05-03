@@ -47,6 +47,46 @@ echo 'source ~/.zsh-startcache/zsh-startcache.plugin.zsh' >> ~/.zshrc
 
 ## Usage
 
+### With Oh My Zsh (or any framework)
+
+Source the plugin **before** your framework. It intercepts `compinit` automatically:
+
+```zsh
+# .zshrc
+source ~/.zsh-startcache/zsh-startcache.plugin.zsh  # ← before OMZ
+
+export ZSH="$HOME/.oh-my-zsh"
+plugins=(git fzf kubectl ...)
+source $ZSH/oh-my-zsh.sh  # compinit is intercepted, deferred, and cached
+
+# Replace slow evals:
+_startcache_eval mise activate zsh
+_startcache_eval starship init zsh
+_startcache_eval direnv hook zsh
+```
+
+That's it. No configuration needed. The plugin:
+1. Wraps `compinit` before your framework calls it
+2. Queues any `compdef` calls from plugins
+3. Runs the real `compinit` with time-based caching at first prompt
+4. Replays queued `compdef` calls
+
+### Without a framework
+
+```zsh
+source ~/.zsh-startcache/zsh-startcache.plugin.zsh
+
+# Your fpath additions...
+fpath=(~/.zsh/completions $fpath)
+
+# Cached evals:
+_startcache_eval mise activate zsh
+_startcache_eval starship init zsh
+
+# compinit runs automatically at first prompt, or call manually:
+# _startcache_compinit
+```
+
 ### Caching eval initializations
 
 Replace slow `eval` calls:
@@ -63,33 +103,12 @@ _startcache_eval starship init zsh
 _startcache_eval direnv hook zsh
 ```
 
-### Caching compinit
-
-Replace your `compinit` call (or let it replace Oh My Zsh's):
-
-```zsh
-# Instead of:
-autoload -Uz compinit && compinit
-
-# Use:
-autoload -Uz compinit
-_startcache_compinit
-```
-
-**With Oh My Zsh:** Add `zsh-startcache` to your plugins list and set `DISABLE_COMPFIX=true` in your `.zshrc` (before sourcing OMZ). The plugin handles compinit itself.
-
 ### Clearing the cache
 
 After installing new tools or completions:
 
 ```zsh
 _startcache_clear
-```
-
-Or just delete the cache directory:
-
-```zsh
-rm -rf ~/.cache/zsh-startcache
 ```
 
 ## Configuration
@@ -106,11 +125,16 @@ export ZSH_STARTCACHE_TTL=48  # rebuild every 2 days
 source ~/.zsh-startcache/zsh-startcache.plugin.zsh
 ```
 
-## Why not just `typeset -U fpath`?
+## How it works
 
-`typeset -U fpath` prevents *duplicate* entries but doesn't prevent *ordering changes*. When tmux opens a new pane, macOS system paths may be prepended in a different order. OMZ's fpath-string comparison sees a different string and triggers a full rebuild — even though the *set* of paths hasn't changed.
+When sourced, the plugin immediately:
 
-The only reliable fix is to stop comparing fpath strings entirely and use time-based staleness instead.
+1. **Applies `typeset -U fpath`** — prevents duplicate entries from causing cache invalidation
+2. **Wraps `compinit`** with a no-op interceptor — frameworks call it, but nothing happens yet
+3. **Wraps `compdef`** with a queue — plugin registrations are captured for later
+4. **Registers a `precmd` hook** — at first prompt (after `.zshrc` is fully loaded and fpath is complete), runs the real `compinit` with time-based caching and replays all queued `compdef` calls
+
+This means it works transparently with Oh My Zsh, Prezto, or any framework that calls `compinit` internally. No patching, no special flags.
 
 ## Benchmarks
 
