@@ -114,16 +114,32 @@ The only reliable fix is to stop comparing fpath strings entirely and use time-b
 
 ## Benchmarks
 
-Measured on Apple M1 Pro, Oh My Zsh with 13 plugins:
+Measured on Apple M1 Pro, zsh 5.9, Oh My Zsh with 13 plugins:
 
-| Configuration | Shell startup |
-|---------------|--------------|
-| Stock OMZ (compinit every time) | ~350ms |
-| OMZ + `typeset -U fpath` (still rebuilds on order change) | ~350ms* |
-| OMZ + `_startcache_compinit` | ~35ms |
-| OMZ + `_startcache_compinit` + `_startcache_eval` for mise/fzf | ~28ms |
+### Eval caching
 
-*\*Helps only when duplicates were the sole cause of invalidation.*
+| Command | Subprocess | Cached | Speedup |
+|---------|-----------|--------|---------|
+| `brew shellenv` | 77ms | 16ms | 4.8x |
+| `mise activate zsh` | 54ms | 28ms | 1.9x |
+| `direnv hook zsh` | 13ms | 1ms | 13x |
+| `starship init zsh` | 25ms | 14ms | 1.8x |
+| **Total** | **169ms** | **59ms** | **2.9x** |
+
+### Compinit caching
+
+| Mode | Time |
+|------|------|
+| Full rebuild (scans all fpath dirs) | 1083ms |
+| `compinit -C` (time-based cache) | 12ms |
+| **Savings when rebuild avoided** | **1071ms (89x)** |
+
+### Combined
+
+| Scenario | Before | After | Savings |
+|----------|--------|-------|---------|
+| Typical (compinit fresh, evals cached) | 181ms | 71ms | **110ms** |
+| Worst case (compinit rebuild + evals) | 1252ms | 71ms | **1181ms** |
 
 ## Credits
 
