@@ -32,15 +32,21 @@ _startcache_eval() {
   mkdir -p "$STARTCACHE_DIR"
 
   # Fresh cache? Source it.
-  if [[ -f "$file" ]] && [[ -n $(find "$file" -mmin -"$STARTCACHE_TTL" 2>/dev/null) ]]; then
-    source "$file"
-    return
+  if [[ -f "$file" ]]; then
+    local now mtime age
+    now=$(date +%s)
+    mtime=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null)
+    age=$(( (now - mtime) / 60 ))
+    if (( age < STARTCACHE_TTL )); then
+      source "$file"
+      return
+    fi
   fi
 
   # Rebuild: run command, cache output, source it
   if command -v "$name" &>/dev/null; then
     local tmp="$file.$$"
-    eval "$("$@")" > "$tmp" 2>/dev/null
+    "$@" > "$tmp" 2>/dev/null
     if [[ -s "$tmp" ]]; then
       mv -f "$tmp" "$file"
       source "$file"
