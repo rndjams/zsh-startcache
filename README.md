@@ -184,6 +184,32 @@ See [`bench.sh`](bench.sh) for a self-contained script that measures your specif
 - [mroth/evalcache](https://github.com/mroth/evalcache) — Inspiration for the eval caching approach
 - [mattmc3/ez-compinit](https://github.com/mattmc3/ez-compinit) — Prior art on compinit management
 
+## Bash
+
+No plugin manager required. No framework. Just a file.
+
+Bash doesn't have zsh's `compinit` problem (completions load lazily), but the `eval "$(tool init)"` subprocess tax is identical. `startcache.bash` handles that:
+
+```bash
+# Add to .bashrc:
+source /path/to/startcache.bash
+
+_startcache_eval brew shellenv
+_startcache_eval mise activate bash
+_startcache_eval direnv hook bash
+_startcache_eval starship init bash
+```
+
+Install:
+
+```bash
+# curl it, source it, done
+curl -o ~/.startcache.bash https://raw.githubusercontent.com/rndjams/zsh-startcache/main/startcache.bash
+echo 'source ~/.startcache.bash' >> ~/.bashrc
+```
+
+Same TTL-based caching, same atomic writes, same `_startcache_clear` to reset. 60 lines, no dependencies, no framework opinions.
+
 ## License
 
 MIT
