@@ -186,9 +186,11 @@ See [`bench.sh`](bench.sh) for a self-contained script that measures your specif
 
 ## Bash
 
-No plugin manager required. No framework. Just a file.
+> **Honest note:** Benchmarking shows startcache.bash adds ~40ms overhead vs raw evals in bash (253ms cached vs 214ms raw). Bash's `source` is slower than zsh's, and subprocess spawns are faster in bash — so the caching tradeoff doesn't pay off the same way.
+>
+> The file is here if you want to experiment, but **for most bash users, raw evals are already fast enough.** The compinit problem that makes startcache essential for zsh doesn't exist in bash.
 
-Bash doesn't have zsh's `compinit` problem (completions load lazily), but the `eval "$(tool init)"` subprocess tax is identical. `startcache.bash` handles that:
+If you still want it (e.g., you have very slow tool inits or are on a constrained system):
 
 ```bash
 # Add to .bashrc:
@@ -203,12 +205,9 @@ _startcache_eval starship init bash
 Install:
 
 ```bash
-# curl it, source it, done
 curl -o ~/.startcache.bash https://raw.githubusercontent.com/rndjams/zsh-startcache/main/startcache.bash
 echo 'source ~/.startcache.bash' >> ~/.bashrc
 ```
-
-Same TTL-based caching, same atomic writes, same `_startcache_clear` to reset. 60 lines, no dependencies, no framework opinions.
 
 ## License
 
