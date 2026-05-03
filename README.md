@@ -138,32 +138,45 @@ This means it works transparently with Oh My Zsh, Prezto, or any framework that 
 
 ## Benchmarks
 
-Measured on Apple M1 Pro, zsh 5.9, Oh My Zsh with 13 plugins:
+Measured on Apple M1 Pro, zsh 5.9, stock Oh My Zsh with 4 plugins (git, fzf, kubectl, history), 4 eval tools (brew, mise, direnv, starship).
 
-### Eval caching
+### The real-world scenario: tmux/screen users with fpath drift
 
-| Command | Subprocess | Cached | Speedup |
-|---------|-----------|--------|---------|
-| `brew shellenv` | 77ms | 16ms | 4.8x |
-| `mise activate zsh` | 54ms | 28ms | 1.9x |
-| `direnv hook zsh` | 13ms | 1ms | 13x |
-| `starship init zsh` | 25ms | 14ms | 1.8x |
-| **Total** | **169ms** | **59ms** | **2.9x** |
+| Configuration | Mean startup |
+|---------------|-------------|
+| Stock OMZ, fpath drift (compinit rebuilds every shell) | **624ms** |
+| Stock OMZ + startcache (immune to drift) | **338ms** |
+| **Savings** | **286ms (46% faster)** |
 
-### Compinit caching
+Fpath drift happens when tmux panes, screen windows, or new terminal tabs cause `$fpath` ordering to change between sessions. Stock OMZ detects this as a change and triggers a full `compinit` rebuild every time.
 
-| Mode | Time |
-|------|------|
-| Full rebuild (scans all fpath dirs) | 1083ms |
-| `compinit -C` (time-based cache) | 12ms |
-| **Savings when rebuild avoided** | **1071ms (89x)** |
+### Component breakdown
 
-### Combined
+| Component | Cost |
+|-----------|------|
+| zsh binary startup (floor) | 19ms |
+| `compinit -C` (cached, no checks) | 44ms |
+| `compinit` full rebuild | 78ms |
+| OMZ framework (4 plugins, no evals) | 303ms |
+| 4 raw evals (subprocess spawns) | 209ms |
+| 4 cached evals (source from file) | 168ms |
 
-| Scenario | Before | After | Savings |
-|----------|--------|-------|---------|
-| Typical (compinit fresh, evals cached) | 181ms | 71ms | **110ms** |
-| Worst case (compinit rebuild + evals) | 1252ms | 71ms | **1181ms** |
+### Full configurations
+
+| Configuration | Mean | vs stock |
+|---------------|------|----------|
+| Stock OMZ + raw evals (warm cache) | 434ms | baseline |
+| Stock OMZ + raw evals (cold/drift) | 624ms | +44% |
+| Stock OMZ + startcache | 338ms | **-22%** |
+| No framework + startcache | 231ms | **-47%** |
+
+### Run your own benchmarks
+
+See [`bench.sh`](bench.sh) for a self-contained script that measures your specific setup. Install [hyperfine](https://github.com/sharkdp/hyperfine), then:
+
+```bash
+./bench.sh
+```
 
 ## Credits
 
