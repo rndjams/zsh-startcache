@@ -123,7 +123,7 @@ function _startcache_eval() {
   if [[ -s "$cache_file" ]] && (( ${#stale} == 0 )); then
     source "$cache_file"
   else
-    if (( $+commands[$name] )) || typeset -f "$name" >/dev/null 2>&1; then
+    if (( $+commands[$name] )) || [[ -x "$name" ]] || typeset -f "$name" >/dev/null 2>&1; then
       # Write to temp file first to avoid partial reads from concurrent shells
       local tmp_file="${cache_file}.$$"
       eval ${(q)@} > "$tmp_file" 2>/dev/null
